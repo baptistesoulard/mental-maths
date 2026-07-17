@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Entraînement au calcul mental chronométré : additions, soustractions, multiplications et divisions, plages de nombres configurables, score et combo.">
+    <title>Mental Math - Entraînement Ultra-Rapide</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <div class="logo-group">
+                <div class="logo">
+                    <span class="accent">mental</span>maths
+                </div>
+                <div class="lang-selector">
+                    <button class="lang-btn" data-lang="fr">FR</button>
+                    <span class="lang-separator">|</span>
+                    <button class="lang-btn" data-lang="en">EN</button>
+                </div>
+            </div>
+            <nav class="shortcuts-info" id="shortcutInfo" data-i18n="shortcuts">
+                <span>[Espace]</span> Commencer/Recommencer | <span>[Échap]</span> Paramètres
+            </nav>
+        </header>
+
+        <!-- PROGRESS BAR -->
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <!-- MAIN LAYOUT -->
+        <main>
+            <!-- CONFIGURATION SCREEN -->
+            <section id="configScreen" class="screen active">
+                <h1 class="screen-title" data-i18n="configTitle">Configuration de la session</h1>
+                
+                <!-- Presets -->
+                <div class="presets-container">
+                    <label class="group-title" data-i18n="presetsLabel">Mode de session</label>
+                    <div class="presets-group">
+                        <button class="preset-btn" data-preset="easy" data-i18n="presetEasy">Facile</button>
+                        <button class="preset-btn active" data-preset="medium" data-i18n="presetMedium">Moyen</button>
+                        <button class="preset-btn" data-preset="hard" data-i18n="presetHard">Difficile</button>
+                        <button class="preset-btn" data-preset="custom" data-i18n="presetCustom">Personnalisé</button>
+                    </div>
+                </div>
+
+                <div class="settings-grid">
+                    <!-- Durée -->
+                    <div class="setting-group">
+                        <label class="group-title" data-i18n="durationLabel">Durée de la session</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="duration" value="30">
+                                <span>30s</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="duration" value="60" checked>
+                                <span>60s</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="duration" value="120">
+                                <span>120s</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="duration" value="240">
+                                <span>240s</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Opérateurs et Plages -->
+                    <div class="setting-group full-width">
+                        <label class="group-title" data-i18n="opsTitle">Opérations et Plages de nombres</label>
+                        
+                        <div class="operations-grid">
+                            <!-- Addition -->
+                            <div class="operation-setting">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="op_add" checked>
+                                    <span class="checkmark"></span>
+                                    <span class="op-label" data-i18n="opAdd">Addition (+)</span>
+                                </label>
+                                <div class="range-inputs">
+                                    <input type="number" id="add_min1" value="2" min="1">
+                                    <span data-i18n="to">à</span>
+                                    <input type="number" id="add_max1" value="100" min="1">
+                                    <span class="separator">/</span>
+                                    <input type="number" id="add_min2" value="2" min="1">
+                                    <span data-i18n="to">à</span>
+                                    <input type="number" id="add_max2" value="100" min="1">
+                                </div>
+                            </div>
+
+                            <!-- Soustraction -->
+                            <div class="operation-setting">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="op_sub" checked>
+                                    <span class="checkmark"></span>
+                                    <span class="op-label" data-i18n="opSub">Soustraction (-)</span>
+                                </label>
+                                <div class="range-inputs">
+                                    <input type="number" id="sub_min1" value="2" min="1">
+                                    <span data-i18n="to">à</span>
+                                    <input type="number" id="sub_max1" value="100" min="1">
+                                    <span class="separator">/</span>
+                                    <input type="number" id="sub_min2" value="2" min="1">
+                                    <span data-i18n="to">à</span>
+                                    <input type="number" id="sub_max2" value="100" min="1">
+                                </div>
+                            </div>
+
+                            <!-- Multiplication -->
+                            <div class="operation-setting">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="op_mul" checked>
+                                    <span class="checkmark"></span>
+                                    <span class="op-label" data-i18n="opMul">Multiplication (×)</span>
+                                </label>
+                                <div class="range-inputs">
+                                    <input type="number" id="mul_min1" value="2" min="1">
+                                    <span data-i18n="to">à</span>
+                                    <input type="number" id="mul_max1" value="12" min="1">
+                                    <span class="separator">/</span>
+                                    <input type="number" id="mul_min2" value="2" min="1">
+                                    <span data-i18n="to">à</span>
+                                    <input type="number" id="mul_max2" value="12" min="1">
+                                </div>
+                            </div>
+
+                            <!-- Division -->
+                            <div class="operation-setting">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="op_div" checked>
+                                    <span class="checkmark"></span>
+                                    <span class="op-label" data-i18n="opDiv">Division (÷)</span>
+                                </label>
+                                <div class="range-inputs">
+                                    <input type="number" id="div_min1" value="2" min="1" data-i18n-title="thDiviseur" title="Diviseur">
+                                    <span data-i18n="to">à</span>
+                                    <input type="number" id="div_max1" value="12" min="1" data-i18n-title="thDiviseur" title="Diviseur">
+                                    <span class="separator">/</span>
+                                    <input type="number" id="div_min2" value="2" min="1" data-i18n-title="thQuotient" title="Quotient">
+                                    <span data-i18n="to">à</span>
+                                    <input type="number" id="div_max2" value="100" min="1" data-i18n-title="thQuotient" title="Quotient">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-container">
+                    <button id="startBtn" class="btn btn-primary" data-i18n="startBtn">Commencer la session <span class="btn-sub">[Espace]</span></button>
+                </div>
+            </section>
+
+            <!-- GAME SCREEN -->
+            <section id="gameScreen" class="screen">
+                <div class="game-header">
+                    <div class="header-stat">
+                        <span class="stat-label" data-i18n="statTime">Temps</span>
+                        <span class="stat-value font-mono" id="timer">60s</span>
+                    </div>
+                    <div class="header-stat">
+                        <span class="stat-label" data-i18n="statScore">Score</span>
+                        <span class="stat-value font-mono" id="score">0</span>
+                    </div>
+                    <div class="header-stat combo-stat">
+                        <span class="stat-label" data-i18n="statCombo">Multiplicateur</span>
+                        <span class="stat-value font-mono" id="combo">x1</span>
+                    </div>
+                </div>
+
+                <div class="game-arena" id="gameArena">
+                    <div class="math-question" id="mathQuestion">-- ? --</div>
+                    <div class="input-wrapper">
+                        <input type="text" id="answerInput" autocomplete="off" inputmode="numeric" data-i18n-placeholder="placeholderAnswer" placeholder="Entrez la réponse...">
+                    </div>
+                </div>
+
+                <div class="game-footer">
+                    <span id="comboBarText" data-i18n="comboLabel">Combo: </span>
+                    <div class="combo-gauge-bg">
+                        <div class="combo-gauge-fill" id="comboGauge"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GAME OVER SCREEN -->
+            <section id="gameOverScreen" class="screen">
+                <h1 class="screen-title" data-i18n="gameOverTitle">Session terminée !</h1>
+
+                <div class="stats-summary">
+                    <div class="summary-card">
+                        <span class="card-label" data-i18n="cardScore">Score Total</span>
+                        <span class="card-value font-mono" id="finalScore">0</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="card-label" data-i18n="cardAccuracy">Précision</span>
+                        <span class="card-value font-mono" id="finalAccuracy">0%</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="card-label" data-i18n="cardSpeed">Vitesse (rép/min)</span>
+                        <span class="card-value font-mono" id="finalSpeed">0</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="card-label" data-i18n="cardMaxCombo">Max Combo</span>
+                        <span class="card-value font-mono" id="finalMaxCombo">x1</span>
+                    </div>
+                </div>
+
+                <div class="results-layout">
+                    <!-- Session History & Error Analysis -->
+                    <div class="history-list-container">
+                        <h3 data-i18n="logTitle">Détails des questions</h3>
+                        <div class="questions-log-wrapper">
+                            <table class="questions-table">
+                               <thead>
+                                   <tr>
+                                       <th data-i18n="thCalc">Calcul</th>
+                                       <th data-i18n="thYourAns">Votre réponse</th>
+                                       <th data-i18n="thStatus">Statut</th>
+                                       <th data-i18n="thTime">Temps</th>
+                                   </tr>
+                               </thead>
+                               <tbody id="questionsLog">
+                                   <!-- Questions populated by JS -->
+                               </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-container">
+                    <button id="restartBtn" class="btn btn-primary" data-i18n="restartBtn">Recommencer <span class="btn-sub">[Espace]</span></button>
+                    <button id="toConfigBtn" class="btn btn-secondary" data-i18n="toConfigBtn">Paramètres <span class="btn-sub">[Echap]</span></button>
+                </div>
+            </section>
+        </main>
+
+        <!-- SCOREBOARD & FOOTER -->
+        <footer>
+            <div class="scoreboard-section">
+                <h3 data-i18n="leaderboardTitle">Top 10 - Meilleurs Scores</h3>
+                <div class="table-container">
+                    <table class="scoreboard-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="thRank">Rang</th>
+                                <th data-i18n="thDate">Date</th>
+                                <th data-i18n="thDuration">Durée</th>
+                                <th data-i18n="thScore">Score</th>
+                                <th data-i18n="thAccuracy">Précision</th>
+                                <th data-i18n="thMaxCombo">Max Combo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scoreboardBody">
+                            <tr>
+                                <td colspan="6" class="empty-table" data-i18n="emptyTable">Aucune partie enregistrée</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="dev-credits" data-i18n="credits">
+                Inspiré par Zetamac & Monkeytype • Développé en HTML5/CSS3/JS
+            </div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
