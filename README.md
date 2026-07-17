@@ -38,7 +38,3 @@ python -m http.server 4173
 ## Données
 
 Aucune donnée n'est envoyée nulle part. Les scores et la langue sont stockés dans le `localStorage` du navigateur.
-
-## Licence
-
-MIT
