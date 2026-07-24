@@ -223,6 +223,12 @@ function setupEventListeners() {
         });
     }
 
+    // Logo returns to the home (configuration) screen
+    const logo = document.querySelector('.logo');
+    if (logo) {
+        logo.addEventListener('click', goHome);
+    }
+
     // Start session
     elements.startBtn.addEventListener('click', startSession);
     
@@ -282,11 +288,14 @@ function setupEventListeners() {
 // Show specific screen
 function setScreen(screenName) {
     state.screen = screenName;
-    
+
+    // Declutter the view during play (hides the leaderboard on all devices)
+    document.body.classList.toggle('is-playing', screenName === 'playing');
+
     elements.configScreen.classList.remove('active');
     elements.gameScreen.classList.remove('active');
     elements.gameOverScreen.classList.remove('active');
-    
+
     if (screenName === 'config') {
         elements.configScreen.classList.add('active');
     } else if (screenName === 'playing') {
@@ -300,6 +309,16 @@ function setScreen(screenName) {
 function showConfigScreen() {
     setScreen('config');
     elements.progressBar.style.width = '0%';
+}
+
+// Return to the home (configuration) screen from anywhere, stopping any
+// running session cleanly.
+function goHome() {
+    if (state.screen === 'playing') {
+        endSession(false); // clears timers/animations and shows config
+    } else {
+        showConfigScreen();
+    }
 }
 
 // Read settings from UI
@@ -624,7 +643,22 @@ function endSession(completed = true) {
         showConfigScreen();
         return;
     }
-    
+
+    // Record the question still on screen when time ran out so it appears in
+    // the final review. Display only — it does not affect the score/accuracy.
+    if (state.currentQuestion) {
+        const partial = elements.answerInput.value.trim();
+        state.sessionHistory.unshift({
+            text: state.currentQuestion.text,
+            userAns: state.firstWrongInput || partial || null,
+            correctAns: state.currentQuestion.answer,
+            correct: false,
+            unanswered: true,
+            time: ((Date.now() - state.questionStartTime) / 1000).toFixed(2)
+        });
+        state.currentQuestion = null; // guard against double logging
+    }
+
     // If the user answered absolutely nothing, prevent Division by Zero
     const totalAttempts = Math.max(state.questionsAttempted, 1);
     const accuracy = Math.round((state.questionsCorrect / totalAttempts) * 100);
@@ -679,11 +713,19 @@ function populateQuestionsLog() {
         
         const statusSpan = item.correct
             ? `<span class="status-badge correct">${dict.correctBadge}</span>`
-            : `<span class="status-badge incorrect">${dict.incorrectBadge}</span>`;
+            : item.unanswered
+                ? `<span class="status-badge unanswered">${dict.unansweredBadge}</span>`
+                : `<span class="status-badge incorrect">${dict.incorrectBadge}</span>`;
 
-        const answerCell = item.correct
-            ? `<span class="log-correct-ans">${item.correctAns}</span>`
-            : `<span class="log-incorrect-ans">${escapeHtml(item.userAns)}</span><span class="log-correct-ans">${item.correctAns}</span>`;
+        let answerCell;
+        if (item.correct) {
+            answerCell = `<span class="log-correct-ans">${item.correctAns}</span>`;
+        } else {
+            const userPart = item.userAns
+                ? `<span class="log-incorrect-ans">${escapeHtml(item.userAns)}</span>`
+                : `<span class="log-empty-ans">—</span>`;
+            answerCell = `${userPart}<span class="log-correct-ans">${item.correctAns}</span>`;
+        }
 
         row.innerHTML = `
             <td>${item.text}</td>
@@ -862,6 +904,7 @@ const translations = {
         credits: "Inspiré par Zetamac & Monkeytype • Développé en HTML5/CSS3/JS",
         correctBadge: "Correct",
         incorrectBadge: "Erreur",
+        unansweredBadge: "Non répondu",
         noAnswers: "Aucune question répondue",
         thDiviseur: "Diviseur",
         thQuotient: "Quotient",
@@ -933,6 +976,7 @@ const translations = {
         credits: "Inspired by Zetamac & Monkeytype • Developed in HTML5/CSS3/JS",
         correctBadge: "Correct",
         incorrectBadge: "Error",
+        unansweredBadge: "Unanswered",
         noAnswers: "No questions answered",
         thDiviseur: "Divisor",
         thQuotient: "Quotient",

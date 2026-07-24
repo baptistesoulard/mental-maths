@@ -107,6 +107,7 @@ header {
     color: var(--text-color);
     user-select: none;
     letter-spacing: -1px;
+    cursor: pointer;
 }
 
 .logo .accent {
@@ -828,9 +829,19 @@ input[type=number] {
     color: var(--error-color);
 }
 
+.status-badge.unanswered {
+    background-color: rgba(121, 163, 201, 0.15);
+    color: var(--sub-color);
+}
+
 .log-incorrect-ans {
     color: var(--error-color);
     text-decoration: line-through;
+    margin-right: 0.5rem;
+}
+
+.log-empty-ans {
+    color: var(--sub-color);
     margin-right: 0.5rem;
 }
 
@@ -916,6 +927,11 @@ footer {
     padding-top: 1rem;
 }
 
+/* Hide the leaderboard during play to keep the exercise view focused */
+body.is-playing .scoreboard-section {
+    display: none;
+}
+
 /* High score animation row */
 .new-high-score {
     animation: flashRow 1s ease-in-out infinite alternate;
@@ -974,9 +990,26 @@ footer {
         margin: 0 0.1rem;
     }
 
+    /* Compact game area so the stats stay visible with the keyboard open */
+    .game-header {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+    }
+
+    .game-arena {
+        padding: 1.5rem 1rem;
+        min-height: auto;
+    }
+
     /* Slightly smaller question to fit longer expressions on one line */
     .math-question {
-        font-size: 2.8rem;
+        font-size: 2.6rem;
+        margin-bottom: 1.2rem;
+    }
+
+    /* Smaller field so the placeholder no longer overflows */
+    #answerInput {
+        font-size: 1.8rem;
     }
 
     /* Stack action buttons full-width instead of overflowing side by side */
