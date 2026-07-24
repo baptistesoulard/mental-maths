@@ -221,6 +221,18 @@ main {
     border-color: var(--main-color);
 }
 
+/* Tips toggle inside the session-mode box */
+.presets-container .tips-toggle {
+    margin-top: 0.4rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Keep the checkmark aligned with the label despite the top padding */
+.presets-container .tips-toggle .checkmark {
+    top: 1rem;
+}
+
 /* CONFIGURATION SCREEN */
 .settings-grid {
     display: grid;
@@ -624,6 +636,96 @@ input[type=number] {
     width: 0%;
     background-color: var(--success-color);
     border-radius: 4px;
+}
+
+/* In-game tip banner */
+.game-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin-top: 1.2rem;
+    padding: 0.8rem 1rem;
+    background-color: var(--sub-alt-color);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-left: 3px solid var(--main-color);
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    color: var(--sub-color);
+    min-height: 2.8rem;
+}
+
+.game-tip-icon {
+    line-height: 1.4;
+    user-select: none;
+}
+
+.game-tip-text {
+    line-height: 1.4;
+    animation: fadeIn var(--transition-normal);
+}
+
+.game-tip-text b {
+    color: var(--text-color);
+    font-family: var(--font-mono);
+    font-weight: 700;
+}
+
+/* End-screen tips review */
+.tips-review {
+    margin-top: 1.5rem;
+    background-color: var(--sub-alt-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tips-review h3 {
+    font-size: 1.1rem;
+    color: var(--main-color);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.tips-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.tips-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.8rem 1rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: var(--border-radius);
+    border-left: 3px solid var(--main-color);
+    font-size: 0.9rem;
+    color: var(--sub-color);
+    line-height: 1.5;
+}
+
+.tips-list li.tip-perfect {
+    border-left-color: var(--success-color);
+}
+
+.tip-icon {
+    user-select: none;
+    line-height: 1.5;
+}
+
+.tips-list .tip-calc {
+    color: var(--main-color);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    margin-right: 0.15rem;
+}
+
+.tips-list b {
+    color: var(--text-color);
+    font-family: var(--font-mono);
+    font-weight: 700;
 }
 
 /* GAME OVER SCREEN */

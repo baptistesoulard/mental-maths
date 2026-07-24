@@ -22,6 +22,7 @@ const state = {
     questionStartTime: 0,
     hasMistakeOnCurrent: false,
     firstWrongInput: null, // first invalid input typed on the current question
+    currentTipId: null, // id of the tip shown for the current question
     
     // Timers & Loops
     timerInterval: null,
@@ -29,6 +30,7 @@ const state = {
     
     // Configuration
     config: {
+        showTips: true, // display improvement tips during and after the session
         ops: {
             add: true,
             sub: true,
@@ -75,6 +77,59 @@ const presets = {
     }
 };
 
+// ==========================================================================
+// MENTAL MATH TIPS
+// Each tip has an id (whose text lives in translations[lang].tips[id])
+// and a matcher testing whether it applies to a given question.
+// Ordered from most specific to general: the first match wins, and each
+// operator ends with a catch-all so a tip is always available.
+// ==========================================================================
+const mathTips = [
+    // Multiplication — number-specific tricks
+    { id: 'mulSquare5', match: (a, b, op) => op === '×' && a === b && a % 10 === 5 },
+    { id: 'mul11',      match: (a, b, op) => op === '×' && (a === 11 || b === 11) },
+    { id: 'mul25',      match: (a, b, op) => op === '×' && (a === 25 || b === 25) },
+    { id: 'mul9',       match: (a, b, op) => op === '×' && (a === 9 || b === 9) },
+    { id: 'mul5',       match: (a, b, op) => op === '×' && (a === 5 || b === 5) },
+    { id: 'mul4',       match: (a, b, op) => op === '×' && (a === 4 || b === 4) },
+    { id: 'mul8',       match: (a, b, op) => op === '×' && (a === 8 || b === 8) },
+    { id: 'mulDistribute', match: (a, b, op) => op === '×' }, // catch-all
+
+    // Addition
+    { id: 'addRound',     match: (a, b, op) => op === '+' && (a % 10 >= 6 || b % 10 >= 6) },
+    { id: 'addLeftRight', match: (a, b, op) => op === '+' }, // catch-all
+
+    // Subtraction
+    { id: 'subRound',   match: (a, b, op) => op === '-' && b % 10 !== 0 },
+    { id: 'subCountUp', match: (a, b, op) => op === '-' }, // catch-all
+
+    // Division
+    { id: 'div5',        match: (a, b, op) => op === '÷' && b === 5 },
+    { id: 'div4',        match: (a, b, op) => op === '÷' && b === 4 },
+    { id: 'div2',        match: (a, b, op) => op === '÷' && b === 2 },
+    { id: 'divThinkMul', match: (a, b, op) => op === '÷' } // catch-all
+];
+
+// Parse the two operands and the operator out of a question string like "24 × 5"
+function parseOperands(text) {
+    const parts = text.split(' ');
+    return { a: parseInt(parts[0], 10), op: parts[1], b: parseInt(parts[2], 10) };
+}
+
+// Return the id of the best-matching tip for a question, or null if none apply
+function findTipId(text) {
+    const { a, op, b } = parseOperands(text);
+    if (isNaN(a) || isNaN(b)) return null;
+    const tip = mathTips.find(t => t.match(a, b, op, a + b));
+    return tip ? tip.id : null;
+}
+
+// Look up a tip's translated text with a fallback to French
+function getTipText(id) {
+    const dict = translations[currentLang] || translations.fr;
+    return (dict.tips && dict.tips[id]) || translations.fr.tips[id] || '';
+}
+
 // DOM Elements
 const elements = {
     // Screens
@@ -93,8 +148,13 @@ const elements = {
     mathQuestion: document.getElementById('mathQuestion'),
     answerInput: document.getElementById('answerInput'),
     gameArena: document.getElementById('gameArena'),
-    
+    gameTip: document.getElementById('gameTip'),
+    gameTipText: document.getElementById('gameTipText'),
+    tipsToggle: document.getElementById('op_tips'),
+
     // Game over details
+    tipsReview: document.getElementById('tipsReview'),
+    tipsList: document.getElementById('tipsList'),
     finalScore: document.getElementById('finalScore'),
     finalAccuracy: document.getElementById('finalAccuracy'),
     finalSpeed: document.getElementById('finalSpeed'),
@@ -113,10 +173,19 @@ const elements = {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initLanguage();
+    initTipsPreference();
     loadLeaderboard();
     setupEventListeners();
     elements.answerInput.focus();
 });
+
+// Restore the saved "show tips" preference (defaults to on)
+function initTipsPreference() {
+    const saved = localStorage.getItem('mentalmath_showtips');
+    if (elements.tipsToggle) {
+        elements.tipsToggle.checked = saved === null ? true : saved === 'true';
+    }
+}
 
 // Event Listeners
 function setupEventListeners() {
@@ -134,8 +203,11 @@ function setupEventListeners() {
         });
     });
 
-    // If any setting input is modified, set preset to custom
+    // If any setting input is modified, set preset to custom.
+    // The tips toggle is a display preference, not a difficulty setting, so it
+    // is excluded and handled separately below.
     document.querySelectorAll('.settings-grid input').forEach(input => {
+        if (input.id === 'op_tips') return;
         input.addEventListener('change', () => {
             setPresetActiveButton('custom');
         });
@@ -143,6 +215,13 @@ function setupEventListeners() {
             setPresetActiveButton('custom');
         });
     });
+
+    // Persist the tips preference whenever it is toggled
+    if (elements.tipsToggle) {
+        elements.tipsToggle.addEventListener('change', () => {
+            localStorage.setItem('mentalmath_showtips', elements.tipsToggle.checked);
+        });
+    }
 
     // Start session
     elements.startBtn.addEventListener('click', startSession);
@@ -229,6 +308,9 @@ function readSettings() {
     const durationRadio = document.querySelector('input[name="duration"]:checked');
     state.duration = parseInt(durationRadio ? durationRadio.value : 60, 10);
     
+    // Tips display preference
+    state.config.showTips = elements.tipsToggle ? elements.tipsToggle.checked : true;
+
     // Operators
     state.config.ops.add = document.getElementById('op_add').checked;
     state.config.ops.sub = document.getElementById('op_sub').checked;
@@ -381,9 +463,28 @@ function generateNextQuestion() {
     
     elements.mathQuestion.textContent = `${text} =`;
     elements.answerInput.value = '';
-    
+
+    // Show a contextual tip for this question
+    updateGameTip(text);
+
     // Reset/start combo animation loop
     startComboGaugeAnimation();
+}
+
+// Display the tip relevant to the current question in the game screen
+function updateGameTip(text) {
+    // Respect the "show tips" preference
+    if (!state.config.showTips) {
+        state.currentTipId = null;
+        if (elements.gameTip) elements.gameTip.style.display = 'none';
+        return;
+    }
+    if (elements.gameTip) elements.gameTip.style.display = '';
+
+    state.currentTipId = findTipId(text);
+    if (elements.gameTipText) {
+        elements.gameTipText.innerHTML = state.currentTipId ? getTipText(state.currentTipId) : '';
+    }
 }
 
 // Combo Gauge Animation (60 FPS with requestAnimationFrame)
@@ -547,7 +648,10 @@ function endSession(completed = true) {
     
     // Populate detailed logs of current session
     populateQuestionsLog();
-    
+
+    // Build improvement tips from the missed questions
+    populateTipsReview();
+
     // Go to Game Over Screen
     setScreen('gameover');
 }
@@ -589,6 +693,66 @@ function populateQuestionsLog() {
         `;
         
         elements.questionsLog.appendChild(row);
+    });
+}
+
+// Build the "tips to improve" section from the questions that were missed.
+// Tips are de-duplicated (one card per trick) and illustrated with the first
+// missed calculation that triggered them.
+function populateTipsReview() {
+    if (!elements.tipsReview || !elements.tipsList) return;
+
+    // Respect the "show tips" preference
+    if (!state.config.showTips) {
+        elements.tipsReview.style.display = 'none';
+        return;
+    }
+
+    const dict = translations[currentLang] || translations.fr;
+    elements.tipsList.innerHTML = '';
+
+    const missed = state.sessionHistory.filter(item => !item.correct);
+
+    // No mistakes: congratulate and offer a general speed tip (only if the
+    // player actually answered something).
+    if (missed.length === 0) {
+        if (state.questionsCorrect > 0) {
+            elements.tipsReview.style.display = '';
+            const li = document.createElement('li');
+            li.className = 'tip-perfect';
+            li.innerHTML = `<span class="tip-icon">🎉</span><span>${dict.tipPerfect}</span>`;
+            elements.tipsList.appendChild(li);
+        } else {
+            elements.tipsReview.style.display = 'none';
+        }
+        return;
+    }
+
+    // Map each applicable tip to the first missed calculation illustrating it,
+    // preserving first-seen order and capping the list to keep it digestible.
+    const seen = new Map();
+    missed.forEach(item => {
+        const tipId = findTipId(item.text);
+        if (tipId && !seen.has(tipId)) {
+            seen.set(tipId, item.text);
+        }
+    });
+
+    if (seen.size === 0) {
+        elements.tipsReview.style.display = 'none';
+        return;
+    }
+
+    elements.tipsReview.style.display = '';
+    let count = 0;
+    seen.forEach((calcText, tipId) => {
+        if (count >= 6) return;
+        count++;
+        const li = document.createElement('li');
+        li.innerHTML =
+            `<span class="tip-icon">💡</span>` +
+            `<span><span class="tip-calc">${escapeHtml(calcText)} —</span> ${getTipText(tipId)}</span>`;
+        elements.tipsList.appendChild(li);
     });
 }
 
@@ -661,6 +825,8 @@ const translations = {
         presetHard: "Difficile",
         presetCustom: "Personnalisé",
         durationLabel: "Durée de la session",
+        tipsSettingLabel: "Astuces pour progresser",
+        tipsSettingText: "Afficher les astuces pendant et après la session",
         opsTitle: "Opérations et Plages de nombres",
         opAdd: "Addition (+)",
         opSub: "Soustraction (-)",
@@ -698,7 +864,27 @@ const translations = {
         incorrectBadge: "Erreur",
         noAnswers: "Aucune question répondue",
         thDiviseur: "Diviseur",
-        thQuotient: "Quotient"
+        thQuotient: "Quotient",
+        tipsTitle: "💡 Astuces pour progresser",
+        tipPerfect: "Sans-faute, bravo ! Pour aller plus vite, calcule de gauche à droite (les grands chiffres d'abord) et annonce la réponse avant de la vérifier.",
+        tips: {
+            mulSquare5: "Carré d'un nombre finissant par 5 : <b>n5² = n×(n+1)</b> suivi de <b>25</b>. Ex : 35² → 3×4 = 12 → <b>1225</b>.",
+            mul11: "×11 d'un nombre à 2 chiffres : additionne ses chiffres et glisse la somme au milieu. Ex : 34×11 → 3_(3+4)_4 → <b>374</b>.",
+            mul25: "×25 : multiplie par <b>100</b> puis divise par <b>4</b>. Ex : 16×25 → 1600÷4 → <b>400</b>.",
+            mul9: "×9 : multiplie par <b>10</b> puis retire le nombre. Ex : 7×9 → 70−7 → <b>63</b>.",
+            mul5: "×5 : multiplie par <b>10</b> puis divise par <b>2</b>. Ex : 24×5 → 240÷2 → <b>120</b>.",
+            mul4: "×4 : <b>double deux fois</b>. Ex : 18×4 → 36 → <b>72</b>.",
+            mul8: "×8 : <b>double trois fois</b>. Ex : 12×8 → 24 → 48 → <b>96</b>.",
+            mulDistribute: "Décompose le calcul : 13×7 → (10×7)+(3×7) → 70+21 → <b>91</b>.",
+            addRound: "Arrondis à la dizaine puis compense. Ex : 47+38 → 47+40−2 → <b>85</b>.",
+            addLeftRight: "Additionne de gauche à droite : d'abord les dizaines, puis les unités.",
+            subRound: "Arrondis ce que tu retires. Ex : 83−29 → 83−30+1 → <b>54</b>.",
+            subCountUp: "Compte en avançant : pour 72−68, va de 68 à 72 → <b>4</b>.",
+            div5: "÷5 : multiplie par <b>2</b> puis divise par <b>10</b>. Ex : 90÷5 → 180÷10 → <b>18</b>.",
+            div4: "÷4 : <b>divise deux fois par 2</b>. Ex : 96÷4 → 48 → <b>24</b>.",
+            div2: "÷2 : prends la <b>moitié</b>. Pour un grand nombre, coupe-le : 84 → 40+2 → <b>42</b>.",
+            divThinkMul: "Pense à l'envers : 144÷12 revient à chercher « 12 × ? = 144 »."
+        }
     },
     en: {
         title: "Mental Math - Ultra-Fast Training",
@@ -710,6 +896,8 @@ const translations = {
         presetHard: "Hard",
         presetCustom: "Custom",
         durationLabel: "Session Duration",
+        tipsSettingLabel: "Tips to improve",
+        tipsSettingText: "Show tips during and after the session",
         opsTitle: "Operations and Number Ranges",
         opAdd: "Addition (+)",
         opSub: "Subtraction (-)",
@@ -747,7 +935,27 @@ const translations = {
         incorrectBadge: "Error",
         noAnswers: "No questions answered",
         thDiviseur: "Divisor",
-        thQuotient: "Quotient"
+        thQuotient: "Quotient",
+        tipsTitle: "💡 Tips to improve",
+        tipPerfect: "Flawless, well done! To go faster, work left to right (biggest digits first) and say the answer before checking it.",
+        tips: {
+            mulSquare5: "Square of a number ending in 5: <b>n5² = n×(n+1)</b> followed by <b>25</b>. Ex: 35² → 3×4 = 12 → <b>1225</b>.",
+            mul11: "×11 of a 2-digit number: add its digits and slot the sum in the middle. Ex: 34×11 → 3_(3+4)_4 → <b>374</b>.",
+            mul25: "×25: multiply by <b>100</b> then divide by <b>4</b>. Ex: 16×25 → 1600÷4 → <b>400</b>.",
+            mul9: "×9: multiply by <b>10</b> then subtract the number. Ex: 7×9 → 70−7 → <b>63</b>.",
+            mul5: "×5: multiply by <b>10</b> then divide by <b>2</b>. Ex: 24×5 → 240÷2 → <b>120</b>.",
+            mul4: "×4: <b>double it twice</b>. Ex: 18×4 → 36 → <b>72</b>.",
+            mul8: "×8: <b>double it three times</b>. Ex: 12×8 → 24 → 48 → <b>96</b>.",
+            mulDistribute: "Break it apart: 13×7 → (10×7)+(3×7) → 70+21 → <b>91</b>.",
+            addRound: "Round to the nearest ten, then compensate. Ex: 47+38 → 47+40−2 → <b>85</b>.",
+            addLeftRight: "Add left to right: tens first, then the units.",
+            subRound: "Round the number you subtract. Ex: 83−29 → 83−30+1 → <b>54</b>.",
+            subCountUp: "Count up instead: for 72−68, go from 68 to 72 → <b>4</b>.",
+            div5: "÷5: multiply by <b>2</b> then divide by <b>10</b>. Ex: 90÷5 → 180÷10 → <b>18</b>.",
+            div4: "÷4: <b>halve it twice</b>. Ex: 96÷4 → 48 → <b>24</b>.",
+            div2: "÷2: take <b>half</b>. For a big number, split it: 84 → 40+2 → <b>42</b>.",
+            divThinkMul: "Think in reverse: 144÷12 means asking \"12 × ? = 144\"."
+        }
     }
 };
 
@@ -800,6 +1008,9 @@ function setLanguage(lang) {
     loadLeaderboard();
     if (state.screen === 'gameover') {
         populateQuestionsLog();
+        populateTipsReview();
+    } else if (state.screen === 'playing' && state.currentTipId && elements.gameTipText) {
+        elements.gameTipText.innerHTML = getTipText(state.currentTipId);
     }
 }
 

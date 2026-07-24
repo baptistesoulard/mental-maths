@@ -46,6 +46,11 @@
                         <button class="preset-btn" data-preset="hard" data-i18n="presetHard">Difficile</button>
                         <button class="preset-btn" data-preset="custom" data-i18n="presetCustom">Personnalisé</button>
                     </div>
+                    <label class="checkbox-container tips-toggle">
+                        <input type="checkbox" id="op_tips" checked>
+                        <span class="checkmark"></span>
+                        <span class="op-label" data-i18n="tipsSettingText">Afficher les astuces pendant et après la session</span>
+                    </label>
                 </div>
 
                 <div class="settings-grid">
@@ -187,6 +192,11 @@
                         <div class="combo-gauge-fill" id="comboGauge"></div>
                     </div>
                 </div>
+
+                <div class="game-tip" id="gameTip">
+                    <span class="game-tip-icon">💡</span>
+                    <span class="game-tip-text" id="gameTipText"></span>
+                </div>
             </section>
 
             <!-- GAME OVER SCREEN -->
@@ -232,6 +242,11 @@
                             </table>
                         </div>
                     </div>
+                </div>
+
+                <div class="tips-review" id="tipsReview" style="display:none;">
+                    <h3 id="tipsReviewTitle" data-i18n="tipsTitle">Astuces pour progresser</h3>
+                    <ul class="tips-list" id="tipsList"></ul>
                 </div>
 
                 <div class="action-container">
