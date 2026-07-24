@@ -925,3 +925,57 @@ footer {
     0% { background-color: rgba(248, 143, 82, 0.03); }
     100% { background-color: rgba(248, 143, 82, 0.08); }
 }
+
+/* ==========================================================================
+   RESPONSIVE / MOBILE
+   ========================================================================== */
+@media (max-width: 600px) {
+    /* Reclaim horizontal space on narrow screens */
+    .container {
+        padding: 1rem;
+    }
+
+    /* Keyboard shortcuts are meaningless on touch devices */
+    .shortcuts-info {
+        display: none;
+    }
+
+    .presets-container,
+    .settings-grid {
+        padding: 1.2rem;
+    }
+
+    /* Allow grid/flex children to shrink instead of overflowing (and being
+       clipped by body's overflow-x: hidden) */
+    .setting-group,
+    .operation-setting,
+    .operations-grid {
+        min-width: 0;
+    }
+
+    /* Duration: 2 buttons per row so 240s stays reachable */
+    .radio-label {
+        flex: 1 1 40%;
+    }
+
+    /* Number ranges: compact inputs so both pairs fit; wrap as a safety net
+       on very small screens */
+    .range-inputs {
+        flex-wrap: wrap;
+        padding-left: 0;
+        gap: 0.3rem;
+    }
+
+    .range-inputs input {
+        width: 3rem;
+    }
+
+    .range-inputs .separator {
+        margin: 0 0.1rem;
+    }
+
+    /* Slightly smaller question to fit longer expressions on one line */
+    .math-question {
+        font-size: 2.8rem;
+    }
+}
