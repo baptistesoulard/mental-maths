@@ -103,10 +103,15 @@ const mathTips = [
     { id: 'subRound',   match: (a, b, op) => op === '-' && b % 10 !== 0 },
     { id: 'subCountUp', match: (a, b, op) => op === '-' }, // catch-all
 
-    // Division
+    // Division — divisor-specific tricks
+    { id: 'div10',       match: (a, b, op) => op === '÷' && b === 10 },
+    { id: 'div8',        match: (a, b, op) => op === '÷' && b === 8 },
+    { id: 'div6',        match: (a, b, op) => op === '÷' && b === 6 },
     { id: 'div5',        match: (a, b, op) => op === '÷' && b === 5 },
     { id: 'div4',        match: (a, b, op) => op === '÷' && b === 4 },
+    { id: 'div3',        match: (a, b, op) => op === '÷' && b === 3 },
     { id: 'div2',        match: (a, b, op) => op === '÷' && b === 2 },
+    { id: 'div12',       match: (a, b, op) => op === '÷' && b === 12 },
     { id: 'divThinkMul', match: (a, b, op) => op === '÷' } // catch-all
 ];
 
@@ -923,9 +928,14 @@ const translations = {
             addLeftRight: "Additionne de gauche à droite : d'abord les dizaines, puis les unités.",
             subRound: "Arrondis ce que tu retires. Ex : 83−29 → 83−30+1 → <b>54</b>.",
             subCountUp: "Compte en avançant : pour 72−68, va de 68 à 72 → <b>4</b>.",
+            div10: "÷10 : enlève un zéro (décale la virgule d'un rang). Ex : 480÷10 → <b>48</b>.",
+            div8: "÷8 : <b>divise trois fois par 2</b>. Ex : 96÷8 → 48 → 24 → <b>12</b>.",
+            div6: "÷6 : divise par <b>2</b> puis par <b>3</b>. Ex : 84÷6 → 42÷3 → <b>14</b>.",
             div5: "÷5 : multiplie par <b>2</b> puis divise par <b>10</b>. Ex : 90÷5 → 180÷10 → <b>18</b>.",
             div4: "÷4 : <b>divise deux fois par 2</b>. Ex : 96÷4 → 48 → <b>24</b>.",
+            div3: "÷3 : découpe en multiples de 3. Ex : 72÷3 → (60+12)÷3 → 20+4 → <b>24</b>.",
             div2: "÷2 : prends la <b>moitié</b>. Pour un grand nombre, coupe-le : 84 → 40+2 → <b>42</b>.",
+            div12: "÷12 : divise par <b>2</b> puis par <b>6</b> (ou par <b>3</b> puis par <b>4</b>). Ex : 168÷12 → 84÷6 → <b>14</b>.",
             divThinkMul: "Pense à l'envers : 144÷12 revient à chercher « 12 × ? = 144 »."
         }
     },
@@ -995,9 +1005,14 @@ const translations = {
             addLeftRight: "Add left to right: tens first, then the units.",
             subRound: "Round the number you subtract. Ex: 83−29 → 83−30+1 → <b>54</b>.",
             subCountUp: "Count up instead: for 72−68, go from 68 to 72 → <b>4</b>.",
+            div10: "÷10: drop a zero (shift the decimal one place). Ex: 480÷10 → <b>48</b>.",
+            div8: "÷8: <b>halve it three times</b>. Ex: 96÷8 → 48 → 24 → <b>12</b>.",
+            div6: "÷6: divide by <b>2</b> then by <b>3</b>. Ex: 84÷6 → 42÷3 → <b>14</b>.",
             div5: "÷5: multiply by <b>2</b> then divide by <b>10</b>. Ex: 90÷5 → 180÷10 → <b>18</b>.",
             div4: "÷4: <b>halve it twice</b>. Ex: 96÷4 → 48 → <b>24</b>.",
+            div3: "÷3: break it into multiples of 3. Ex: 72÷3 → (60+12)÷3 → 20+4 → <b>24</b>.",
             div2: "÷2: take <b>half</b>. For a big number, split it: 84 → 40+2 → <b>42</b>.",
+            div12: "÷12: divide by <b>2</b> then by <b>6</b> (or by <b>3</b> then by <b>4</b>). Ex: 168÷12 → 84÷6 → <b>14</b>.",
             divThinkMul: "Think in reverse: 144÷12 means asking \"12 × ? = 144\"."
         }
     }
