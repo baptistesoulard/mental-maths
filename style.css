@@ -943,6 +943,96 @@ body.is-playing .scoreboard-section {
 }
 
 /* ==========================================================================
+   TRAINING MODE SELECTOR & ESTIMATION MODE
+   ========================================================================== */
+.mode-selector {
+    margin-bottom: 1.5rem;
+    background-color: var(--sub-alt-color);
+    padding: 1.5rem 2rem;
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.mode-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.mode-btn {
+    flex: 1 1 40%;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--sub-color);
+    padding: 0.9rem 1rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 1rem;
+    transition: var(--transition-normal);
+    text-align: center;
+}
+
+.mode-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+}
+
+.mode-btn.active {
+    background-color: var(--main-color);
+    color: var(--bg-color);
+    border-color: var(--main-color);
+}
+
+/* Estimation config panel */
+.estimation-config {
+    margin-bottom: 1.5rem;
+    background-color: var(--sub-alt-color);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.est-types-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem 1.2rem;
+}
+
+/* Mode-specific visibility (toggled via body.estimation-mode) */
+.estimation-only {
+    display: none;
+}
+
+body.estimation-mode .exact-only {
+    display: none;
+}
+
+body.estimation-mode #estimationConfig {
+    display: flex;
+}
+
+body.estimation-mode #estimateSubmit {
+    display: flex;
+}
+
+#estimateSubmit {
+    margin-top: 1.5rem;
+}
+
+/* Exact target shown next to an estimation answer in the review */
+.log-target {
+    color: var(--sub-color);
+    font-size: 0.85em;
+}
+
+/* ==========================================================================
    RESPONSIVE / MOBILE
    ========================================================================== */
 @media (max-width: 600px) {
@@ -972,8 +1062,15 @@ body.is-playing .scoreboard-section {
     }
 
     .presets-container,
-    .settings-grid {
+    .settings-grid,
+    .mode-selector,
+    .estimation-config {
         padding: 1.2rem;
+    }
+
+    /* Estimation question types stack on one column */
+    .est-types-grid {
+        grid-template-columns: 1fr;
     }
 
     /* Allow grid/flex children to shrink instead of overflowing (and being

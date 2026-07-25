@@ -30,6 +30,9 @@ const state = {
     
     // Configuration
     config: {
+        mode: 'exact', // 'exact' | 'estimation'
+        tolerance: 0.05, // accepted relative margin in estimation mode
+        estTypes: { mul: true, sqrt: true, percent: true, power: true, compound: true },
         showTips: true, // display improvement tips during and after the session
         ops: {
             add: true,
@@ -135,6 +138,24 @@ function getTipText(id) {
     return (dict.tips && dict.tips[id]) || translations.fr.tips[id] || '';
 }
 
+// Format a number for display: rounded to 2 decimals, with the locale's
+// decimal/thousands separators (e.g. 3901 -> "3 901", 12.25 -> "12,25" in FR)
+function formatNum(x) {
+    const rounded = Math.round(x * 100) / 100;
+    return rounded.toLocaleString(currentLang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 2 });
+}
+
+// Turn an exponent into unicode superscript (e.g. 4 -> "⁴") for power questions
+const SUPERSCRIPTS = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+function toSuperscript(n) {
+    return n.toString().split('').map(d => SUPERSCRIPTS[d] || d).join('');
+}
+
+// Combo time window: estimation is slower, so allow a longer window
+function comboWindowMs() {
+    return state.config.mode === 'estimation' ? 5000 : 2000;
+}
+
 // DOM Elements
 const elements = {
     // Screens
@@ -156,6 +177,7 @@ const elements = {
     gameTip: document.getElementById('gameTip'),
     gameTipText: document.getElementById('gameTipText'),
     tipsToggle: document.getElementById('op_tips'),
+    estimateSubmit: document.getElementById('estimateSubmit'),
 
     // Game over details
     tipsReview: document.getElementById('tipsReview'),
@@ -179,6 +201,7 @@ const elements = {
 document.addEventListener('DOMContentLoaded', () => {
     initLanguage();
     initTipsPreference();
+    initMode();
     loadLeaderboard();
     setupEventListeners();
     elements.answerInput.focus();
@@ -190,6 +213,23 @@ function initTipsPreference() {
     if (elements.tipsToggle) {
         elements.tipsToggle.checked = saved === null ? true : saved === 'true';
     }
+}
+
+// Restore the saved training mode (defaults to exact)
+function initMode() {
+    const saved = localStorage.getItem('mentalmath_mode');
+    setMode(saved === 'estimation' ? 'estimation' : 'exact');
+}
+
+// Switch training mode: toggles which config panels + leaderboard are shown
+function setMode(mode) {
+    state.config.mode = mode;
+    localStorage.setItem('mentalmath_mode', mode);
+    document.body.classList.toggle('estimation-mode', mode === 'estimation');
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+    });
+    loadLeaderboard();
 }
 
 // Event Listeners
@@ -207,6 +247,18 @@ function setupEventListeners() {
             applyPreset(btn.getAttribute('data-preset'));
         });
     });
+
+    // Training mode selection (exact / estimation)
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setMode(btn.getAttribute('data-mode'));
+        });
+    });
+
+    // Estimation submit button (needed on mobile where the numeric keypad has no Enter)
+    if (elements.estimateSubmit) {
+        elements.estimateSubmit.addEventListener('click', submitEstimate);
+    }
 
     // If any setting input is modified, set preset to custom.
     // The tips toggle is a display preference, not a difficulty setting, so it
@@ -281,7 +333,10 @@ function setupEventListeners() {
                 showConfigScreen();
             }
         } else if (e.code === 'Enter') {
-            if (state.screen === 'config') {
+            if (state.screen === 'playing' && state.config.mode === 'estimation') {
+                e.preventDefault();
+                submitEstimate();
+            } else if (state.screen === 'config') {
                 startSession();
             } else if (state.screen === 'gameover') {
                 startSession();
@@ -334,6 +389,24 @@ function readSettings() {
     
     // Tips display preference
     state.config.showTips = elements.tipsToggle ? elements.tipsToggle.checked : true;
+
+    // Training mode
+    const activeMode = document.querySelector('.mode-btn.active');
+    state.config.mode = activeMode ? activeMode.getAttribute('data-mode') : 'exact';
+
+    // Estimation settings
+    const tolRadio = document.querySelector('input[name="tolerance"]:checked');
+    state.config.tolerance = tolRadio ? parseFloat(tolRadio.value) : 0.05;
+    state.config.estTypes.mul = document.getElementById('est_mul').checked;
+    state.config.estTypes.sqrt = document.getElementById('est_sqrt').checked;
+    state.config.estTypes.percent = document.getElementById('est_percent').checked;
+    state.config.estTypes.power = document.getElementById('est_power').checked;
+    state.config.estTypes.compound = document.getElementById('est_compound').checked;
+    // Ensure at least one estimation type is selected
+    if (!Object.values(state.config.estTypes).some(Boolean)) {
+        state.config.estTypes.mul = true;
+        document.getElementById('est_mul').checked = true;
+    }
 
     // Operators
     state.config.ops.add = document.getElementById('op_add').checked;
@@ -429,19 +502,39 @@ function randomInt(min, max) {
 }
 
 function generateNextQuestion() {
-    // Select active operators
+    const q = state.config.mode === 'estimation' ? buildEstimationQuestion() : buildExactQuestion();
+
+    state.currentQuestion = q;
+    state.questionStartTime = Date.now();
+    state.hasMistakeOnCurrent = false;
+    state.firstWrongInput = null;
+
+    // Estimation answers can be decimals; exact answers are integers
+    elements.answerInput.setAttribute('inputmode', q.estimation ? 'decimal' : 'numeric');
+    elements.mathQuestion.textContent = q.estimation ? `${q.text} ≈` : `${q.text} =`;
+    elements.answerInput.value = '';
+
+    // Show a contextual tip for this question
+    updateGameTip(q);
+
+    // Reset/start combo animation loop
+    startComboGaugeAnimation();
+}
+
+// Build a standard exact-arithmetic question
+function buildExactQuestion() {
     const activeOps = [];
     if (state.config.ops.add) activeOps.push('+');
     if (state.config.ops.sub) activeOps.push('-');
     if (state.config.ops.mul) activeOps.push('×');
     if (state.config.ops.div) activeOps.push('÷');
-    
+
     // Fallback if none (should not happen due to check)
     const op = activeOps[randomInt(0, activeOps.length - 1)] || '+';
-    
+
     let text = '';
     let answer = 0;
-    
+
     if (op === '+') {
         const r = state.config.ranges.add;
         const a = randomInt(r.min1, r.max1);
@@ -468,35 +561,71 @@ function generateNextQuestion() {
         answer = a * b;
     } else if (op === '÷') {
         const r = state.config.ranges.div;
-        // Zetamac division algorithm:
-        // diviseur (d) in range 1
-        // quotient (q) in range 2
-        // dividend (a) = d * q
-        // problem: a / d = q
+        // Zetamac division algorithm: dividend = divisor(d) × quotient(q)
         const d = randomInt(r.min1, r.max1);
         const q = randomInt(r.min2, r.max2);
         const a = d * q;
         text = `${a} ÷ ${d}`;
         answer = q;
     }
-    
-    state.currentQuestion = { text, answer, op };
-    state.questionStartTime = Date.now();
-    state.hasMistakeOnCurrent = false;
-    state.firstWrongInput = null;
-    
-    elements.mathQuestion.textContent = `${text} =`;
-    elements.answerInput.value = '';
 
-    // Show a contextual tip for this question
-    updateGameTip(text);
+    return { text, answer, op, estimation: false, tipId: findTipId(text) };
+}
 
-    // Reset/start combo animation loop
-    startComboGaugeAnimation();
+// Build an estimation question of a randomly chosen enabled type. Returns a
+// question carrying its own exact answer, tolerance and tip id.
+function buildEstimationQuestion() {
+    const types = [];
+    if (state.config.estTypes.mul) types.push('mul');
+    if (state.config.estTypes.sqrt) types.push('sqrt');
+    if (state.config.estTypes.percent) types.push('percent');
+    if (state.config.estTypes.power) types.push('power');
+    if (state.config.estTypes.compound) types.push('compound');
+    const type = types[randomInt(0, types.length - 1)] || 'mul';
+
+    let text, answer, tipId;
+
+    if (type === 'mul') {
+        const a = randomInt(23, 98);
+        const b = randomInt(23, 98);
+        text = `${a} × ${b}`;
+        answer = a * b;
+        tipId = 'estMul';
+    } else if (type === 'sqrt') {
+        let n;
+        do { n = randomInt(20, 400); } while (Number.isInteger(Math.sqrt(n)));
+        text = `√${n}`;
+        answer = Math.sqrt(n);
+        tipId = 'estSqrt';
+    } else if (type === 'percent') {
+        const p = randomInt(3, 95);
+        const y = randomInt(4, 40) * 10;
+        const pctOf = currentLang === 'fr' ? ' % de ' : ' % of ';
+        text = `${p}${pctOf}${y}`;
+        answer = p * y / 100;
+        tipId = 'estPercent';
+    } else if (type === 'power') {
+        const base = 1 + randomInt(1, 10) / 100;
+        const n = randomInt(2, 6);
+        text = `${formatNum(base)}${toSuperscript(n)}`;
+        answer = Math.pow(base, n);
+        tipId = 'estPower';
+    } else { // compound interest
+        const c = randomInt(1, 20) * 100;
+        const p = randomInt(1, 8);
+        const n = randomInt(2, 8);
+        text = currentLang === 'fr'
+            ? `${c} €, +${p} %/an, ${n} ans`
+            : `${c} €, +${p}%/yr, ${n} yrs`;
+        answer = c * Math.pow(1 + p / 100, n);
+        tipId = 'estCompound';
+    }
+
+    return { text, answer, estimation: true, tipId, tolerance: state.config.tolerance };
 }
 
 // Display the tip relevant to the current question in the game screen
-function updateGameTip(text) {
+function updateGameTip(q) {
     // Respect the "show tips" preference
     if (!state.config.showTips) {
         state.currentTipId = null;
@@ -505,7 +634,7 @@ function updateGameTip(text) {
     }
     if (elements.gameTip) elements.gameTip.style.display = '';
 
-    state.currentTipId = findTipId(text);
+    state.currentTipId = q ? q.tipId : null;
     if (elements.gameTipText) {
         elements.gameTipText.innerHTML = state.currentTipId ? getTipText(state.currentTipId) : '';
     }
@@ -514,8 +643,8 @@ function updateGameTip(text) {
 // Combo Gauge Animation (60 FPS with requestAnimationFrame)
 function startComboGaugeAnimation() {
     if (state.comboAnimationFrame) cancelAnimationFrame(state.comboAnimationFrame);
-    
-    const duration = 2000; // 2 seconds window to keep combo
+
+    const duration = comboWindowMs(); // window to keep the combo (longer in estimation)
     
     function tick() {
         if (state.screen !== 'playing') return;
@@ -541,7 +670,11 @@ function startComboGaugeAnimation() {
 // Handle Inputs dynamically (Zero Clic)
 function handleInput(e) {
     if (state.screen !== 'playing' || !state.currentQuestion) return;
-    
+
+    // Estimation mode validates on submit (Enter / button), not reactively,
+    // since a partial number can't be tested against a single exact target.
+    if (state.config.mode === 'estimation') return;
+
     const typedValue = elements.answerInput.value.trim();
     if (typedValue === '') return;
     
@@ -563,16 +696,16 @@ function handleInput(e) {
 // Correct Answer flow
 function handleCorrectAnswer() {
     const timeTaken = (Date.now() - state.questionStartTime) / 1000;
-    
-    // Check if answered within 2 seconds
-    const withinComboWindow = timeTaken <= 2.0;
-    
+
+    // Check if answered within the combo window
+    const withinComboWindow = timeTaken <= comboWindowMs() / 1000;
+
     if (withinComboWindow) {
         state.combo++;
         if (state.combo > state.maxCombo) {
             state.maxCombo = state.combo;
         }
-        
+
         // Visual Pop on Combo
         elements.combo.classList.remove('combo-scale');
         void elements.combo.offsetWidth; // Force reflow
@@ -580,31 +713,85 @@ function handleCorrectAnswer() {
     } else {
         state.combo = 1;
     }
-    
+
     // Calculate Score
     const pointsAwarded = 10 * state.combo;
     state.score += pointsAwarded;
     state.questionsCorrect++;
     state.questionsAsked++;
     state.questionsAttempted++; // Correct submission counts as an attempt
-    
+
     // Update Score Board
     elements.score.textContent = state.score;
     elements.combo.textContent = `x${state.combo}`;
-    
+
     // Record in history
     state.sessionHistory.unshift({
         text: state.currentQuestion.text,
         userAns: state.firstWrongInput,
         correctAns: state.currentQuestion.answer,
         correct: !state.hasMistakeOnCurrent,
+        tipId: state.currentQuestion.tipId,
         time: timeTaken.toFixed(2)
     });
-    
+
     // Instant Visual Flash
     flashArena('flash-correct');
-    
+
     // Go to next question
+    generateNextQuestion();
+}
+
+// Estimation submission: judged against a tolerance band, then advances to the
+// next question whether right or wrong (no endless re-guessing).
+function submitEstimate() {
+    if (state.screen !== 'playing' || !state.currentQuestion) return;
+
+    const raw = elements.answerInput.value.trim();
+    if (raw === '') return; // ignore empty submit
+
+    const value = parseFloat(raw.replace(',', '.'));
+    const exact = state.currentQuestion.answer;
+    const tol = state.currentQuestion.tolerance;
+    const within = !isNaN(value) && Math.abs(value - exact) <= Math.abs(exact) * tol;
+    const timeTaken = (Date.now() - state.questionStartTime) / 1000;
+
+    if (within) {
+        const withinComboWindow = timeTaken <= comboWindowMs() / 1000;
+        if (withinComboWindow) {
+            state.combo++;
+            if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+            elements.combo.classList.remove('combo-scale');
+            void elements.combo.offsetWidth;
+            elements.combo.classList.add('combo-scale');
+        } else {
+            state.combo = 1;
+        }
+        state.score += 10 * state.combo;
+        state.questionsCorrect++;
+        flashArena('flash-correct');
+    } else {
+        state.combo = 1;
+        elements.combo.textContent = 'x1';
+        elements.comboGauge.style.width = '0%';
+        flashArena('flash-incorrect');
+    }
+
+    state.questionsAsked++;
+    state.questionsAttempted++;
+    elements.score.textContent = state.score;
+    elements.combo.textContent = `x${state.combo}`;
+
+    state.sessionHistory.unshift({
+        text: state.currentQuestion.text,
+        userAns: raw,
+        correctAns: formatNum(exact),
+        correct: within,
+        estimation: true,
+        tipId: state.currentQuestion.tipId,
+        time: timeTaken.toFixed(2)
+    });
+
     generateNextQuestion();
 }
 
@@ -653,12 +840,15 @@ function endSession(completed = true) {
     // the final review. Display only — it does not affect the score/accuracy.
     if (state.currentQuestion) {
         const partial = elements.answerInput.value.trim();
+        const q = state.currentQuestion;
         state.sessionHistory.unshift({
-            text: state.currentQuestion.text,
+            text: q.text,
             userAns: state.firstWrongInput || partial || null,
-            correctAns: state.currentQuestion.answer,
+            correctAns: q.estimation ? formatNum(q.answer) : q.answer,
             correct: false,
             unanswered: true,
+            estimation: !!q.estimation,
+            tipId: q.tipId,
             time: ((Date.now() - state.questionStartTime) / 1000).toFixed(2)
         });
         state.currentQuestion = null; // guard against double logging
@@ -723,7 +913,15 @@ function populateQuestionsLog() {
                 : `<span class="status-badge incorrect">${dict.incorrectBadge}</span>`;
 
         let answerCell;
-        if (item.correct) {
+        if (item.estimation) {
+            // Show the given value (green if within tolerance, struck if not)
+            // next to the exact target for reference.
+            const cls = item.correct ? 'log-correct-ans' : 'log-incorrect-ans';
+            const userPart = item.userAns
+                ? `<span class="${cls}">${escapeHtml(item.userAns)}</span>`
+                : `<span class="log-empty-ans">—</span>`;
+            answerCell = `${userPart} <span class="log-target">≈ ${escapeHtml(item.correctAns)}</span>`;
+        } else if (item.correct) {
             answerCell = `<span class="log-correct-ans">${item.correctAns}</span>`;
         } else {
             const userPart = item.userAns
@@ -779,7 +977,7 @@ function populateTipsReview() {
     // preserving first-seen order and capping the list to keep it digestible.
     const seen = new Map();
     missed.forEach(item => {
-        const tipId = findTipId(item.text);
+        const tipId = item.tipId || findTipId(item.text);
         if (tipId && !seen.has(tipId)) {
             seen.set(tipId, item.text);
         }
@@ -803,9 +1001,26 @@ function populateTipsReview() {
     });
 }
 
-// Leaderboard Logic
+// Leaderboard Logic — scores are kept separately per training mode
+function scoresKey() {
+    return state.config.mode === 'estimation'
+        ? 'mentalmath_scores_estimation'
+        : 'mentalmath_scores_exact';
+}
+
+// Read the leaderboard for the current mode, falling back to the legacy
+// single-key storage for exact mode (scores saved before modes existed).
+function readScores() {
+    let scores = JSON.parse(localStorage.getItem(scoresKey())) || [];
+    if (state.config.mode !== 'estimation' && scores.length === 0) {
+        const legacy = JSON.parse(localStorage.getItem('mentalmath_scores'));
+        if (legacy && legacy.length) scores = legacy;
+    }
+    return scores;
+}
+
 function loadLeaderboard() {
-    const scores = JSON.parse(localStorage.getItem('mentalmath_scores')) || [];
+    const scores = readScores();
     elements.scoreboardBody.innerHTML = '';
     
     const dict = translations[currentLang] || translations.fr;
@@ -838,10 +1053,10 @@ function loadLeaderboard() {
 }
 
 function saveToLeaderboard(newEntry) {
-    let scores = JSON.parse(localStorage.getItem('mentalmath_scores')) || [];
-    
+    let scores = readScores();
+
     scores.push(newEntry);
-    
+
     // Sort: score descending, then raw accuracy if same score
     scores.sort((a, b) => {
         if (b.rawScore !== a.rawScore) {
@@ -849,11 +1064,11 @@ function saveToLeaderboard(newEntry) {
         }
         return parseInt(b.accuracy) - parseInt(a.accuracy);
     });
-    
+
     // Keep only top 10
     scores = scores.slice(0, 10);
-    
-    localStorage.setItem('mentalmath_scores', JSON.stringify(scores));
+
+    localStorage.setItem(scoresKey(), JSON.stringify(scores));
     loadLeaderboard();
 }
 
@@ -874,6 +1089,20 @@ const translations = {
         durationLabel: "Durée de la session",
         tipsSettingLabel: "Astuces pour progresser",
         tipsSettingText: "Afficher les astuces pendant et après la session",
+        modeLabel: "Type d'entraînement",
+        modeExact: "Calcul exact",
+        modeEstimation: "Estimation",
+        estTypesLabel: "Types de questions",
+        estMulLabel: "Grandes multiplications",
+        estSqrtLabel: "Racines carrées",
+        estPercentLabel: "Pourcentages",
+        estPowerLabel: "Puissances (1+x)ⁿ",
+        estCompoundLabel: "Intérêts composés",
+        toleranceLabel: "Tolérance acceptée",
+        tolStrict: "Stricte ±2%",
+        tolNormal: "Normale ±5%",
+        tolLarge: "Large ±10%",
+        submitBtn: "Valider",
         opsTitle: "Opérations et Plages de nombres",
         opAdd: "Addition (+)",
         opSub: "Soustraction (-)",
@@ -936,7 +1165,12 @@ const translations = {
             div3: "÷3 : découpe en multiples de 3. Ex : 72÷3 → (60+12)÷3 → 20+4 → <b>24</b>.",
             div2: "÷2 : prends la <b>moitié</b>. Pour un grand nombre, coupe-le : 84 → 40+2 → <b>42</b>.",
             div12: "÷12 : divise par <b>2</b> puis par <b>6</b> (ou par <b>3</b> puis par <b>4</b>). Ex : 168÷12 → 84÷6 → <b>14</b>.",
-            divThinkMul: "Pense à l'envers : 144÷12 revient à chercher « 12 × ? = 144 »."
+            divThinkMul: "Pense à l'envers : 144÷12 revient à chercher « 12 × ? = 144 ».",
+            estMul: "Arrondis un facteur à la dizaine, multiplie, puis ajuste. Ex : 47×83 → 50×83=4150, −3×83 → ≈ <b>3900</b>.",
+            estSqrt: "√(a²+r) ≈ a + r/(2a). Prends le carré le plus proche. Ex : √150 → 12²=144, +6/24 → <b>12,25</b>.",
+            estPercent: "Décompose avec 10 % et 1 %. Ex : 18 % de 250 → 25 + 8×2,5 = 25+20 → <b>45</b>.",
+            estPower: "(1+x)ⁿ ≈ 1 + n·x pour x petit. Ex : 1,05⁴ ≈ 1 + 4×0,05 = <b>1,20</b> (exact ≈ 1,22).",
+            estCompound: "Intérêts composés ≈ capital × (1 + n·taux). Ex : 1000 à 3 % sur 5 ans ≈ 1000×1,15 = <b>1150</b> (exact ≈ 1159)."
         }
     },
     en: {
@@ -951,6 +1185,20 @@ const translations = {
         durationLabel: "Session Duration",
         tipsSettingLabel: "Tips to improve",
         tipsSettingText: "Show tips during and after the session",
+        modeLabel: "Training type",
+        modeExact: "Exact calc",
+        modeEstimation: "Estimation",
+        estTypesLabel: "Question types",
+        estMulLabel: "Large multiplications",
+        estSqrtLabel: "Square roots",
+        estPercentLabel: "Percentages",
+        estPowerLabel: "Powers (1+x)ⁿ",
+        estCompoundLabel: "Compound interest",
+        toleranceLabel: "Accepted tolerance",
+        tolStrict: "Strict ±2%",
+        tolNormal: "Normal ±5%",
+        tolLarge: "Loose ±10%",
+        submitBtn: "Submit",
         opsTitle: "Operations and Number Ranges",
         opAdd: "Addition (+)",
         opSub: "Subtraction (-)",
@@ -1013,7 +1261,12 @@ const translations = {
             div3: "÷3: break it into multiples of 3. Ex: 72÷3 → (60+12)÷3 → 20+4 → <b>24</b>.",
             div2: "÷2: take <b>half</b>. For a big number, split it: 84 → 40+2 → <b>42</b>.",
             div12: "÷12: divide by <b>2</b> then by <b>6</b> (or by <b>3</b> then by <b>4</b>). Ex: 168÷12 → 84÷6 → <b>14</b>.",
-            divThinkMul: "Think in reverse: 144÷12 means asking \"12 × ? = 144\"."
+            divThinkMul: "Think in reverse: 144÷12 means asking \"12 × ? = 144\".",
+            estMul: "Round one factor to a ten, multiply, then adjust. Ex: 47×83 → 50×83=4150, −3×83 → ≈ <b>3900</b>.",
+            estSqrt: "√(a²+r) ≈ a + r/(2a). Take the nearest square. Ex: √150 → 12²=144, +6/24 → <b>12.25</b>.",
+            estPercent: "Break it into 10% and 1%. Ex: 18% of 250 → 25 + 8×2.5 = 25+20 → <b>45</b>.",
+            estPower: "(1+x)ⁿ ≈ 1 + n·x for small x. Ex: 1.05⁴ ≈ 1 + 4×0.05 = <b>1.20</b> (exact ≈ 1.22).",
+            estCompound: "Compound interest ≈ principal × (1 + n·rate). Ex: 1000 at 3% over 5 yrs ≈ 1000×1.15 = <b>1150</b> (exact ≈ 1159)."
         }
     }
 };

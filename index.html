@@ -37,8 +37,17 @@
             <section id="configScreen" class="screen active">
                 <h1 class="screen-title" data-i18n="configTitle">Configuration de la session</h1>
                 
-                <!-- Presets -->
-                <div class="presets-container">
+                <!-- Training mode selector -->
+                <div class="mode-selector">
+                    <label class="group-title" data-i18n="modeLabel">Type d'entraînement</label>
+                    <div class="mode-group">
+                        <button class="mode-btn active" data-mode="exact" data-i18n="modeExact">Calcul exact</button>
+                        <button class="mode-btn" data-mode="estimation" data-i18n="modeEstimation">Estimation</button>
+                    </div>
+                </div>
+
+                <!-- Presets (exact mode) -->
+                <div class="presets-container exact-only">
                     <label class="group-title" data-i18n="presetsLabel">Mode de session</label>
                     <div class="presets-group">
                         <button class="preset-btn" data-preset="easy" data-i18n="presetEasy">Facile</button>
@@ -46,11 +55,24 @@
                         <button class="preset-btn" data-preset="hard" data-i18n="presetHard">Difficile</button>
                         <button class="preset-btn" data-preset="custom" data-i18n="presetCustom">Personnalisé</button>
                     </div>
-                    <label class="checkbox-container tips-toggle">
-                        <input type="checkbox" id="op_tips" checked>
-                        <span class="checkmark"></span>
-                        <span class="op-label" data-i18n="tipsSettingText">Afficher les astuces pendant et après la session</span>
-                    </label>
+                </div>
+
+                <!-- Estimation config (estimation mode) -->
+                <div id="estimationConfig" class="estimation-config estimation-only">
+                    <label class="group-title" data-i18n="estTypesLabel">Types de questions</label>
+                    <div class="est-types-grid">
+                        <label class="checkbox-container"><input type="checkbox" id="est_mul" checked><span class="checkmark"></span><span class="op-label" data-i18n="estMulLabel">Grandes multiplications</span></label>
+                        <label class="checkbox-container"><input type="checkbox" id="est_sqrt" checked><span class="checkmark"></span><span class="op-label" data-i18n="estSqrtLabel">Racines carrées</span></label>
+                        <label class="checkbox-container"><input type="checkbox" id="est_percent" checked><span class="checkmark"></span><span class="op-label" data-i18n="estPercentLabel">Pourcentages</span></label>
+                        <label class="checkbox-container"><input type="checkbox" id="est_power" checked><span class="checkmark"></span><span class="op-label" data-i18n="estPowerLabel">Puissances (1+x)ⁿ</span></label>
+                        <label class="checkbox-container"><input type="checkbox" id="est_compound" checked><span class="checkmark"></span><span class="op-label" data-i18n="estCompoundLabel">Intérêts composés</span></label>
+                    </div>
+                    <label class="group-title" data-i18n="toleranceLabel">Tolérance acceptée</label>
+                    <div class="radio-group tolerance-group">
+                        <label class="radio-label"><input type="radio" name="tolerance" value="0.02"><span data-i18n="tolStrict">Stricte ±2%</span></label>
+                        <label class="radio-label"><input type="radio" name="tolerance" value="0.05" checked><span data-i18n="tolNormal">Normale ±5%</span></label>
+                        <label class="radio-label"><input type="radio" name="tolerance" value="0.10"><span data-i18n="tolLarge">Large ±10%</span></label>
+                    </div>
                 </div>
 
                 <div class="settings-grid">
@@ -77,8 +99,18 @@
                         </div>
                     </div>
 
-                    <!-- Opérateurs et Plages -->
-                    <div class="setting-group full-width">
+                    <!-- Astuces (partagé entre les modes) -->
+                    <div class="setting-group">
+                        <label class="group-title" data-i18n="tipsSettingLabel">Astuces pour progresser</label>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="op_tips" checked>
+                            <span class="checkmark"></span>
+                            <span class="op-label" data-i18n="tipsSettingText">Afficher les astuces pendant et après la session</span>
+                        </label>
+                    </div>
+
+                    <!-- Opérateurs et Plages (mode exact) -->
+                    <div class="setting-group full-width exact-only">
                         <label class="group-title" data-i18n="opsTitle">Opérations et Plages de nombres</label>
                         
                         <div class="operations-grid">
@@ -184,6 +216,7 @@
                     <div class="input-wrapper">
                         <input type="text" id="answerInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="answer-field" inputmode="numeric" data-i18n-placeholder="placeholderAnswer" placeholder="Entrez la réponse...">
                     </div>
+                    <button id="estimateSubmit" class="btn btn-primary estimation-only" data-i18n="submitBtn">Valider</button>
                 </div>
 
                 <div class="game-footer">
