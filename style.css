@@ -946,9 +946,24 @@ body.is-playing .scoreboard-section {
    RESPONSIVE / MOBILE
    ========================================================================== */
 @media (max-width: 600px) {
+    /* Top-align the whole page so the question/input sit high on screen and
+       aren't pushed under the keyboard (and the iOS autofill bar) */
+    body {
+        align-items: flex-start;
+    }
+
+    main {
+        justify-content: flex-start;
+    }
+
     /* Reclaim horizontal space on narrow screens */
     .container {
         padding: 1rem;
+        min-height: auto;
+    }
+
+    header {
+        margin-bottom: 1.5rem;
     }
 
     /* Keyboard shortcuts are meaningless on touch devices */
