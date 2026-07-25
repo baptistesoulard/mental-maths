@@ -905,7 +905,8 @@ function populateQuestionsLog() {
     
     state.sessionHistory.forEach(item => {
         const row = document.createElement('tr');
-        
+        row.className = 'log-row';
+
         const statusSpan = item.correct
             ? `<span class="status-badge correct">${dict.correctBadge}</span>`
             : item.unanswered
@@ -930,15 +931,43 @@ function populateQuestionsLog() {
             answerCell = `${userPart}<span class="log-correct-ans">${item.correctAns}</span>`;
         }
 
+        const tipId = item.tipId || findTipId(item.text);
+
         row.innerHTML = `
-            <td>${item.text}</td>
+            <td>${item.text}${tipId ? ' <span class="log-tip-caret">💡</span>' : ''}</td>
             <td>${answerCell}</td>
             <td>${statusSpan}</td>
             <td>${item.time}s</td>
         `;
-        
+
         elements.questionsLog.appendChild(row);
+
+        // Any question with a tip becomes clickable and reveals it in an inline row
+        if (tipId) {
+            row.classList.add('has-tip');
+            const detail = document.createElement('tr');
+            detail.className = 'tip-detail-row';
+            detail.style.display = 'none';
+            detail.innerHTML = `<td colspan="4"><span class="tip-icon">💡</span> ${getTipText(tipId)}</td>`;
+            elements.questionsLog.appendChild(detail);
+
+            row.addEventListener('click', () => toggleRowTip(row));
+        }
     });
+}
+
+// Accordion: reveal the tip row under a clicked question (closing any other)
+function toggleRowTip(row) {
+    const detail = row.nextElementSibling;
+    const willOpen = detail && detail.classList.contains('tip-detail-row') && detail.style.display === 'none';
+
+    elements.questionsLog.querySelectorAll('.tip-detail-row').forEach(d => { d.style.display = 'none'; });
+    elements.questionsLog.querySelectorAll('.log-row').forEach(r => r.classList.remove('selected'));
+
+    if (willOpen) {
+        detail.style.display = '';
+        row.classList.add('selected');
+    }
 }
 
 // Build the "tips to improve" section from the questions that were missed.
@@ -1121,6 +1150,7 @@ const translations = {
         cardSpeed: "Vitesse (rép/min)",
         cardMaxCombo: "Max Combo",
         logTitle: "Détails des questions",
+        logHint: "Touchez une ligne pour afficher son astuce",
         thCalc: "Calcul",
         thYourAns: "Votre réponse",
         thStatus: "Statut",
@@ -1217,6 +1247,7 @@ const translations = {
         cardSpeed: "Speed (ans/min)",
         cardMaxCombo: "Max Combo",
         logTitle: "Question Details",
+        logHint: "Tap a row to show its tip",
         thCalc: "Question",
         thYourAns: "Your Answer",
         thStatus: "Status",

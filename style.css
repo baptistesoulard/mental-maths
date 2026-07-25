@@ -845,6 +845,58 @@ input[type=number] {
     margin-right: 0.5rem;
 }
 
+/* Hint under the details title */
+.log-hint {
+    font-size: 0.8rem;
+    color: var(--sub-color);
+    margin-bottom: 0.8rem;
+}
+
+/* Clickable question rows revealing their tip */
+.log-row.has-tip {
+    cursor: pointer;
+}
+
+.log-row.has-tip:hover td {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.log-row.selected td {
+    background-color: rgba(248, 143, 82, 0.08);
+}
+
+.log-tip-caret {
+    opacity: 0.35;
+    font-size: 0.85em;
+    transition: opacity var(--transition-fast);
+}
+
+.log-row.has-tip:hover .log-tip-caret,
+.log-row.selected .log-tip-caret {
+    opacity: 1;
+}
+
+/* Inline tip revealed under a selected question */
+.tip-detail-row td {
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--sub-color);
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    border-left: 3px solid var(--main-color);
+    padding: 0.8rem 1rem;
+}
+
+.tip-detail-row td b {
+    color: var(--text-color);
+    font-family: var(--font-mono);
+    font-weight: 700;
+}
+
+.tip-detail-row .tip-icon {
+    margin-right: 0.4rem;
+}
+
 .log-correct-ans {
     color: var(--success-color);
     font-weight: bold;
