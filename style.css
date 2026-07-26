@@ -1105,7 +1105,11 @@ body.estimation-mode #estimateSubmit {
     }
 
     header {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .progress-container {
+        margin-bottom: 1rem;
     }
 
     /* Keyboard shortcuts are meaningless on touch devices */
@@ -1154,26 +1158,37 @@ body.estimation-mode #estimateSubmit {
         margin: 0 0.1rem;
     }
 
-    /* Compact game area so the stats stay visible with the keyboard open */
+    /* Compact game area so the stats — and the estimation "Valider" button —
+       stay clear of the keyboard and the iOS autofill bar */
     .game-header {
-        margin-bottom: 1.5rem;
-        padding: 1rem;
+        margin-bottom: 1rem;
+        padding: 0.6rem;
+    }
+
+    .stat-value {
+        font-size: 1.4rem;
     }
 
     .game-arena {
-        padding: 1.5rem 1rem;
+        padding: 1rem;
         min-height: auto;
     }
 
-    /* Slightly smaller question to fit longer expressions on one line */
+    /* Smaller question so long expressions (e.g. compound interest) wrap less
+       and don't push the estimation button under the keyboard */
     .math-question {
-        font-size: 2.6rem;
-        margin-bottom: 1.2rem;
+        font-size: 2rem;
+        margin-bottom: 0.6rem;
     }
 
     /* Smaller field so the placeholder no longer overflows */
     #answerInput {
         font-size: 1.8rem;
+    }
+
+    /* Keep the estimation submit button tight against the input */
+    #estimateSubmit {
+        margin-top: 0.8rem;
     }
 
     /* Stack action buttons full-width instead of overflowing side by side */
