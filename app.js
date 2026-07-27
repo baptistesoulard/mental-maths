@@ -1273,7 +1273,7 @@ const translations = {
             estSqrt: "√(a²+r) ≈ a + r/(2a). Prends le carré le plus proche. Ex : √150 → 12²=144, +6/24 → <b>12,25</b>.",
             estPercent: "Décompose avec 10 % et 1 %. Ex : 18 % de 250 → 25 + 8×2,5 = 25+20 → <b>45</b>.",
             estPower: "(1+x)ⁿ ≈ 1 + n·x pour x petit. Ex : 1,05⁴ ≈ 1 + 4×0,05 = <b>1,20</b> (exact ≈ 1,22).",
-            estCompound: "Intérêts composés ≈ capital × (1 + n·taux). Ex : 1000 à 3 % sur 5 ans ≈ 1000×1,15 = <b>1150</b> (exact ≈ 1159)."
+            estCompound: "Intérêts composés : pars de capital × (1 + n·taux), puis <b>rajoute un peu</b> pour le cumul (les intérêts sur les intérêts). Ex : 1000 à 3 % sur 5 ans → 1000×1,15 = 1150, +un peu → <b>~1160</b> (exact 1159)."
         }
     },
     en: {
@@ -1375,7 +1375,7 @@ const translations = {
             estSqrt: "√(a²+r) ≈ a + r/(2a). Take the nearest square. Ex: √150 → 12²=144, +6/24 → <b>12.25</b>.",
             estPercent: "Break it into 10% and 1%. Ex: 18% of 250 → 25 + 8×2.5 = 25+20 → <b>45</b>.",
             estPower: "(1+x)ⁿ ≈ 1 + n·x for small x. Ex: 1.05⁴ ≈ 1 + 4×0.05 = <b>1.20</b> (exact ≈ 1.22).",
-            estCompound: "Compound interest ≈ principal × (1 + n·rate). Ex: 1000 at 3% over 5 yrs ≈ 1000×1.15 = <b>1150</b> (exact ≈ 1159)."
+            estCompound: "Compound interest: start from principal × (1 + n·rate), then <b>add a bit more</b> for compounding (interest on interest). Ex: 1000 at 3% over 5 yrs → 1000×1.15 = 1150, +a bit → <b>~1160</b> (exact 1159)."
         }
     }
 };
