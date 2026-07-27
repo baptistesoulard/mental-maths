@@ -5,7 +5,9 @@
 // Game State Object
 const state = {
     screen: 'config', // 'config' | 'playing' | 'gameover'
-    duration: 60, // in seconds
+    duration: 60, // in seconds (0 = no-timer / free practice)
+    noTimer: false, // free practice: no countdown, ends on the Finish button
+    sessionStartTime: 0, // wall-clock start, for the speed stat in no-timer mode
     timeLeft: 60,
     score: 0,
     combo: 1,
@@ -23,6 +25,7 @@ const state = {
     hasMistakeOnCurrent: false,
     firstWrongInput: null, // first invalid input typed on the current question
     currentTipId: null, // id of the tip shown for the current question
+    revealed: false, // learning mode: solution revealed for the current question
     
     // Timers & Loops
     timerInterval: null,
@@ -31,6 +34,7 @@ const state = {
     // Configuration
     config: {
         mode: 'exact', // 'exact' | 'estimation'
+        learning: false, // learning mode: no score/timer, solutions on demand
         tolerance: 0.05, // accepted relative margin in estimation mode
         estTypes: { mul: true, sqrt: true, percent: true, power: true, compound: true },
         showTips: true, // display improvement tips during and after the session
@@ -178,6 +182,10 @@ const elements = {
     gameTipText: document.getElementById('gameTipText'),
     tipsToggle: document.getElementById('op_tips'),
     estimateSubmit: document.getElementById('estimateSubmit'),
+    finishBtn: document.getElementById('finishBtn'),
+    learningToggle: document.getElementById('learning_mode'),
+    revealBtn: document.getElementById('revealBtn'),
+    revealBox: document.getElementById('revealBox'),
 
     // Game over details
     tipsReview: document.getElementById('tipsReview'),
@@ -258,6 +266,16 @@ function setupEventListeners() {
     // Estimation submit button (needed on mobile where the numeric keypad has no Enter)
     if (elements.estimateSubmit) {
         elements.estimateSubmit.addEventListener('click', submitEstimate);
+    }
+
+    // Finish button ends a no-timer session and shows the review
+    if (elements.finishBtn) {
+        elements.finishBtn.addEventListener('click', () => endSession(true));
+    }
+
+    // Learning mode: reveal the solution, then advance
+    if (elements.revealBtn) {
+        elements.revealBtn.addEventListener('click', revealSolution);
     }
 
     // If any setting input is modified, set preset to custom.
@@ -351,6 +369,10 @@ function setScreen(screenName) {
 
     // Declutter the view during play (hides the leaderboard on all devices)
     document.body.classList.toggle('is-playing', screenName === 'playing');
+    // Reveal the Finish button only while playing a no-timer session
+    document.body.classList.toggle('no-timer', screenName === 'playing' && state.noTimer);
+    // Learning mode: hides score/combo pressure and shows the reveal button
+    document.body.classList.toggle('learning', screenName === 'playing' && state.config.learning);
 
     elements.configScreen.classList.remove('active');
     elements.gameScreen.classList.remove('active');
@@ -383,9 +405,10 @@ function goHome() {
 
 // Read settings from UI
 function readSettings() {
-    // Duration
+    // Duration (0 = no-timer / free practice)
     const durationRadio = document.querySelector('input[name="duration"]:checked');
     state.duration = parseInt(durationRadio ? durationRadio.value : 60, 10);
+    state.noTimer = state.duration === 0;
     
     // Tips display preference
     state.config.showTips = elements.tipsToggle ? elements.tipsToggle.checked : true;
@@ -393,6 +416,12 @@ function readSettings() {
     // Training mode
     const activeMode = document.querySelector('.mode-btn.active');
     state.config.mode = activeMode ? activeMode.getAttribute('data-mode') : 'exact';
+
+    // Learning mode forces free practice (no countdown)
+    state.config.learning = elements.learningToggle ? elements.learningToggle.checked : false;
+    if (state.config.learning) {
+        state.noTimer = true;
+    }
 
     // Estimation settings
     const tolRadio = document.querySelector('input[name="tolerance"]:checked');
@@ -455,20 +484,23 @@ function startSession() {
     state.questionsCorrect = 0;
     state.questionsAttempted = 0;
     state.sessionHistory = [];
-    
+    state.sessionStartTime = Date.now();
+
     // Update UI
     elements.score.textContent = '0';
     elements.combo.textContent = 'x1';
     elements.combo.className = 'stat-value font-mono';
-    elements.timer.textContent = `${state.timeLeft}s`;
+    elements.timer.textContent = state.noTimer ? '∞' : `${state.timeLeft}s`;
     elements.progressBar.style.width = '100%';
     elements.answerInput.value = '';
-    
+
     // Show Screen
     setScreen('playing');
-    
-    // Start timers
-    startTimer();
+
+    // Start the countdown only in timed mode
+    if (!state.noTimer) {
+        startTimer();
+    }
     generateNextQuestion();
 }
 
@@ -513,6 +545,16 @@ function generateNextQuestion() {
     elements.answerInput.setAttribute('inputmode', q.estimation ? 'decimal' : 'numeric');
     elements.mathQuestion.textContent = q.estimation ? `${q.text} ≈` : `${q.text} =`;
     elements.answerInput.value = '';
+
+    // Reset the learning-mode reveal state for the new question
+    state.revealed = false;
+    if (elements.revealBox) {
+        elements.revealBox.style.display = 'none';
+        elements.revealBox.textContent = '';
+    }
+    if (elements.revealBtn) {
+        elements.revealBtn.textContent = (translations[currentLang] || translations.fr).revealBtn;
+    }
 
     // Show a contextual tip for this question
     updateGameTip(q);
@@ -795,6 +837,25 @@ function submitEstimate() {
     generateNextQuestion();
 }
 
+// Learning mode: first click reveals the exact answer, a second one advances
+function revealSolution() {
+    if (state.screen !== 'playing' || !state.currentQuestion) return;
+    const dict = translations[currentLang] || translations.fr;
+
+    if (!state.revealed) {
+        const q = state.currentQuestion;
+        const shown = q.estimation ? `≈ ${formatNum(q.answer)}` : `= ${q.answer}`;
+        if (elements.revealBox) {
+            elements.revealBox.textContent = shown;
+            elements.revealBox.style.display = 'block';
+        }
+        state.revealed = true;
+        if (elements.revealBtn) elements.revealBtn.textContent = dict.nextBtn;
+    } else {
+        generateNextQuestion();
+    }
+}
+
 // Incorrect Input flow
 function handleIncorrectInput(typedValue) {
     // Only count 1 mistake per question to avoid penalizing rapid typos too harshly
@@ -857,24 +918,31 @@ function endSession(completed = true) {
     // If the user answered absolutely nothing, prevent Division by Zero
     const totalAttempts = Math.max(state.questionsAttempted, 1);
     const accuracy = Math.round((state.questionsCorrect / totalAttempts) * 100);
-    const opsPerMin = Math.round((state.questionsCorrect / state.duration) * 60);
-    
+    // Speed: use the real elapsed time in no-timer mode, the fixed duration otherwise
+    const elapsedSec = state.noTimer
+        ? Math.max((Date.now() - state.sessionStartTime) / 1000, 1)
+        : state.duration;
+    const opsPerMin = Math.round((state.questionsCorrect / elapsedSec) * 60);
+
     // Populate Game Over Stats
     elements.finalScore.textContent = state.score;
     elements.finalAccuracy.textContent = `${accuracy}%`;
     elements.finalSpeed.textContent = opsPerMin;
     elements.finalMaxCombo.textContent = `x${state.maxCombo}`;
-    
-    // Save to LocalStorage Leaderboard
-    saveToLeaderboard({
-        date: new Date().toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-        duration: `${state.duration}s`,
-        score: state.score,
-        accuracy: `${accuracy}%`,
-        maxCombo: `x${state.maxCombo}`,
-        rawScore: state.score // for sorting
-    });
-    
+
+    // Save to the leaderboard only for timed sessions (free practice has no
+    // fixed duration, so its score isn't comparable)
+    if (!state.noTimer) {
+        saveToLeaderboard({
+            date: new Date().toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            duration: `${state.duration}s`,
+            score: state.score,
+            accuracy: `${accuracy}%`,
+            maxCombo: `x${state.maxCombo}`,
+            rawScore: state.score // for sorting
+        });
+    }
+
     // Populate detailed logs of current session
     populateQuestionsLog();
 
@@ -1116,11 +1184,16 @@ const translations = {
         presetHard: "Difficile",
         presetCustom: "Personnalisé",
         durationLabel: "Durée de la session",
+        durationFree: "∞ Libre",
+        finishBtn: "Terminer la session",
         tipsSettingLabel: "Astuces pour progresser",
         tipsSettingText: "Afficher les astuces pendant et après la session",
         modeLabel: "Type d'entraînement",
         modeExact: "Calcul exact",
         modeEstimation: "Estimation",
+        learningLabel: "Mode apprentissage — sans score, sans chrono, avec solutions",
+        revealBtn: "Voir la solution",
+        nextBtn: "Question suivante",
         estTypesLabel: "Types de questions",
         estMulLabel: "Grandes multiplications",
         estSqrtLabel: "Racines carrées",
@@ -1213,11 +1286,16 @@ const translations = {
         presetHard: "Hard",
         presetCustom: "Custom",
         durationLabel: "Session Duration",
+        durationFree: "∞ Free",
+        finishBtn: "Finish session",
         tipsSettingLabel: "Tips to improve",
         tipsSettingText: "Show tips during and after the session",
         modeLabel: "Training type",
         modeExact: "Exact calc",
         modeEstimation: "Estimation",
+        learningLabel: "Learning mode — no score, no timer, solutions on demand",
+        revealBtn: "Show the solution",
+        nextBtn: "Next question",
         estTypesLabel: "Question types",
         estMulLabel: "Large multiplications",
         estSqrtLabel: "Square roots",

@@ -1078,6 +1078,61 @@ body.estimation-mode #estimateSubmit {
     margin-top: 1.5rem;
 }
 
+/* Finish button: shown only during a no-timer session */
+.no-timer-only {
+    display: none;
+}
+
+body.no-timer #finishBtn {
+    display: flex;
+}
+
+#finishBtn {
+    margin-top: 1rem;
+}
+
+/* Learning mode: reveal button + no-pressure header */
+.learning-only {
+    display: none;
+}
+
+body.learning #revealBtn {
+    display: flex;
+}
+
+#revealBtn {
+    margin-top: 1rem;
+}
+
+/* Hide score & multiplier stats to remove pressure while learning */
+body.learning .game-header .header-stat:nth-child(2),
+body.learning .game-header .header-stat:nth-child(3) {
+    display: none;
+}
+
+/* Revealed solution box */
+.reveal-box {
+    display: none;
+    margin-top: 1.2rem;
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--success-color);
+    text-align: center;
+    animation: fadeIn var(--transition-normal);
+}
+
+/* Learning checkbox in the mode selector */
+.learning-check {
+    margin-top: 0.4rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.learning-check .checkmark {
+    top: 1rem;
+}
+
 /* Exact target shown next to an estimation answer in the review */
 .log-target {
     color: var(--sub-color);

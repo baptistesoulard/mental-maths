@@ -44,6 +44,11 @@
                         <button class="mode-btn active" data-mode="exact" data-i18n="modeExact">Calcul exact</button>
                         <button class="mode-btn" data-mode="estimation" data-i18n="modeEstimation">Estimation</button>
                     </div>
+                    <label class="checkbox-container learning-check">
+                        <input type="checkbox" id="learning_mode">
+                        <span class="checkmark"></span>
+                        <span class="op-label" data-i18n="learningLabel">Mode apprentissage — sans score, sans chrono, avec solutions</span>
+                    </label>
                 </div>
 
                 <!-- Presets (exact mode) -->
@@ -95,6 +100,10 @@
                             <label class="radio-label">
                                 <input type="radio" name="duration" value="240">
                                 <span>240s</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="duration" value="0">
+                                <span data-i18n="durationFree">∞ Libre</span>
                             </label>
                         </div>
                     </div>
@@ -216,7 +225,10 @@
                     <div class="input-wrapper">
                         <input type="text" id="answerInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="answer-field" inputmode="numeric" data-i18n-placeholder="placeholderAnswer" placeholder="Entrez la réponse...">
                     </div>
+                    <div id="revealBox" class="reveal-box"></div>
                     <button id="estimateSubmit" class="btn btn-primary estimation-only" data-i18n="submitBtn">Valider</button>
+                    <button id="revealBtn" class="btn btn-secondary learning-only" data-i18n="revealBtn">Voir la solution</button>
+                    <button id="finishBtn" class="btn btn-secondary no-timer-only" data-i18n="finishBtn">Terminer la session</button>
                 </div>
 
                 <div class="game-footer">
